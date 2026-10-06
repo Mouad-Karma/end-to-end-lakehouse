@@ -45,6 +45,6 @@ def transform_silver_data(data):
         data=standardize_dates(data)
         data=data.drop_duplicates()
         data=data.dropna(subset=["order_date", "order_id", "customer_name"])
-
+        
         return data
 
