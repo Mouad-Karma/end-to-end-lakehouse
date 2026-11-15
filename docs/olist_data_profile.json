@@ -1,0 +1,358 @@
+{
+  "customers": {
+    "rows": 99441,
+    "exact_duplicates": 0,
+    "key": [
+      "customer_id"
+    ],
+    "repeated_keys": 0,
+    "missing": {},
+    "categories": {
+      "customer_state": {
+        "SP": 41746,
+        "SC": 3637,
+        "MG": 11635,
+        "PR": 5045,
+        "RJ": 12852,
+        "RS": 5466,
+        "PA": 975,
+        "GO": 2020,
+        "ES": 2033,
+        "BA": 3380,
+        "MA": 747,
+        "MS": 715,
+        "CE": 1336,
+        "DF": 2140,
+        "RN": 485,
+        "PE": 1652,
+        "MT": 907,
+        "AM": 148,
+        "AP": 68,
+        "AL": 413,
+        "RO": 253,
+        "PB": 536,
+        "TO": 280,
+        "PI": 495,
+        "AC": 81,
+        "SE": 350,
+        "RR": 46
+      }
+    },
+    "distinct_customer_unique_id": 96096
+  },
+  "geolocation": {
+    "rows": 1000163,
+    "exact_duplicates": 261831,
+    "key": [
+      "geolocation_zip_code_prefix"
+    ],
+    "repeated_keys": 17972,
+    "missing": {},
+    "categories": {
+      "geolocation_state": {
+        "SP": 404268,
+        "RN": 5041,
+        "AC": 1301,
+        "RJ": 121169,
+        "ES": 16748,
+        "MG": 126336,
+        "BA": 36045,
+        "SE": 3563,
+        "PE": 16432,
+        "AL": 4183,
+        "PB": 5538,
+        "CE": 11674,
+        "PI": 4549,
+        "MA": 7853,
+        "PA": 10853,
+        "AP": 853,
+        "AM": 2432,
+        "RR": 646,
+        "DF": 12986,
+        "GO": 20139,
+        "RO": 3478,
+        "TO": 3576,
+        "MT": 12031,
+        "MS": 10431,
+        "RS": 61851,
+        "PR": 57859,
+        "SC": 38328
+      }
+    }
+  },
+  "order_items": {
+    "rows": 112650,
+    "exact_duplicates": 0,
+    "key": [
+      "order_id",
+      "order_item_id"
+    ],
+    "repeated_keys": 0,
+    "missing": {},
+    "categories": {},
+    "unmatched_order_id": {
+      "rows": 0,
+      "values": []
+    },
+    "unmatched_product_id": {
+      "rows": 0,
+      "values": []
+    },
+    "unmatched_seller_id": {
+      "rows": 0,
+      "values": []
+    },
+    "numeric_ranges": {
+      "price": {
+        "min": 0.85,
+        "max": 6735.0,
+        "zero": 0,
+        "negative": 0
+      },
+      "freight_value": {
+        "min": 0.0,
+        "max": 409.68,
+        "zero": 383,
+        "negative": 0
+      }
+    },
+    "orders_with_multiple_rows": 9803,
+    "orders_without_rows": 775
+  },
+  "order_payments": {
+    "rows": 103886,
+    "exact_duplicates": 0,
+    "key": [
+      "order_id",
+      "payment_sequential"
+    ],
+    "repeated_keys": 0,
+    "missing": {},
+    "categories": {
+      "payment_type": {
+        "credit_card": 76795,
+        "boleto": 19784,
+        "voucher": 5775,
+        "debit_card": 1529,
+        "not_defined": 3
+      }
+    },
+    "unmatched_order_id": {
+      "rows": 0,
+      "values": []
+    },
+    "numeric_ranges": {
+      "payment_value": {
+        "min": 0.0,
+        "max": 13664.08,
+        "zero": 9,
+        "negative": 0
+      },
+      "payment_installments": {
+        "min": 0.0,
+        "max": 24.0,
+        "zero": 2,
+        "negative": 0
+      }
+    },
+    "orders_with_multiple_rows": 2961,
+    "orders_without_rows": 1
+  },
+  "order_reviews": {
+    "rows": 99224,
+    "exact_duplicates": 0,
+    "key": [
+      "review_id"
+    ],
+    "repeated_keys": 789,
+    "missing": {
+      "review_comment_title": 87658,
+      "review_comment_message": 58274
+    },
+    "categories": {},
+    "unmatched_order_id": {
+      "rows": 0,
+      "values": []
+    },
+    "numeric_ranges": {
+      "review_score": {
+        "min": 1.0,
+        "max": 5.0,
+        "zero": 0,
+        "negative": 0
+      }
+    },
+    "orders_with_multiple_rows": 547,
+    "orders_without_rows": 768
+  },
+  "orders": {
+    "rows": 99441,
+    "exact_duplicates": 0,
+    "key": [
+      "order_id"
+    ],
+    "repeated_keys": 0,
+    "missing": {
+      "order_delivered_carrier_date": 1783,
+      "order_delivered_customer_date": 2965,
+      "order_approved_at": 160
+    },
+    "categories": {
+      "order_status": {
+        "delivered": 96478,
+        "invoiced": 314,
+        "shipped": 1107,
+        "processing": 301,
+        "unavailable": 609,
+        "canceled": 625,
+        "created": 5,
+        "approved": 2
+      }
+    },
+    "unmatched_customer_id": {
+      "rows": 0,
+      "values": []
+    },
+    "missing_by_status": {
+      "unavailable": {
+        "order_approved_at": 0,
+        "order_delivered_carrier_date": 609,
+        "order_delivered_customer_date": 609
+      },
+      "processing": {
+        "order_approved_at": 0,
+        "order_delivered_carrier_date": 301,
+        "order_delivered_customer_date": 301
+      },
+      "shipped": {
+        "order_approved_at": 0,
+        "order_delivered_carrier_date": 0,
+        "order_delivered_customer_date": 1107
+      },
+      "delivered": {
+        "order_approved_at": 14,
+        "order_delivered_carrier_date": 2,
+        "order_delivered_customer_date": 8
+      },
+      "approved": {
+        "order_approved_at": 0,
+        "order_delivered_carrier_date": 2,
+        "order_delivered_customer_date": 2
+      },
+      "created": {
+        "order_approved_at": 5,
+        "order_delivered_carrier_date": 5,
+        "order_delivered_customer_date": 5
+      },
+      "invoiced": {
+        "order_approved_at": 0,
+        "order_delivered_carrier_date": 314,
+        "order_delivered_customer_date": 314
+      },
+      "canceled": {
+        "order_approved_at": 141,
+        "order_delivered_carrier_date": 550,
+        "order_delivered_customer_date": 619
+      }
+    },
+    "delivery_before_purchase": 0
+  },
+  "products": {
+    "rows": 32951,
+    "exact_duplicates": 0,
+    "key": [
+      "product_id"
+    ],
+    "repeated_keys": 0,
+    "missing": {
+      "product_category_name": 610,
+      "product_name_lenght": 610,
+      "product_description_lenght": 610,
+      "product_photos_qty": 610,
+      "product_weight_g": 2,
+      "product_length_cm": 2,
+      "product_height_cm": 2,
+      "product_width_cm": 2
+    },
+    "categories": {},
+    "unmatched_product_category_name": {
+      "rows": 13,
+      "values": [
+        "pc_gamer",
+        "portateis_cozinha_e_preparadores_de_alimentos"
+      ]
+    },
+    "numeric_ranges": {
+      "product_weight_g": {
+        "min": 0.0,
+        "max": 40425.0,
+        "zero": 4,
+        "negative": 0
+      },
+      "product_length_cm": {
+        "min": 7.0,
+        "max": 105.0,
+        "zero": 0,
+        "negative": 0
+      },
+      "product_height_cm": {
+        "min": 2.0,
+        "max": 105.0,
+        "zero": 0,
+        "negative": 0
+      },
+      "product_width_cm": {
+        "min": 6.0,
+        "max": 118.0,
+        "zero": 0,
+        "negative": 0
+      }
+    }
+  },
+  "sellers": {
+    "rows": 3095,
+    "exact_duplicates": 0,
+    "key": [
+      "seller_id"
+    ],
+    "repeated_keys": 0,
+    "missing": {},
+    "categories": {
+      "seller_state": {
+        "SP": 1849,
+        "RJ": 171,
+        "PE": 9,
+        "PR": 349,
+        "GO": 40,
+        "SC": 190,
+        "BA": 19,
+        "DF": 30,
+        "RS": 129,
+        "MG": 244,
+        "RN": 5,
+        "MT": 4,
+        "CE": 13,
+        "PB": 6,
+        "AC": 1,
+        "ES": 23,
+        "RO": 2,
+        "PI": 1,
+        "MS": 5,
+        "SE": 2,
+        "MA": 1,
+        "AM": 1,
+        "PA": 1
+      }
+    }
+  },
+  "translation": {
+    "rows": 71,
+    "exact_duplicates": 0,
+    "key": [
+      "product_category_name"
+    ],
+    "repeated_keys": 0,
+    "missing": {},
+    "categories": {}
+  }
+}

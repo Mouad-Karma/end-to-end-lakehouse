@@ -1,61 +1,78 @@
-import os
-import sys
+import argparse
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+from pyspark.sql import SparkSession
 
-from Bronze import load_bronze_data
-from Silver import transform_silver_data
-from Gold import create_sales_by_region, create_sales_by_category, create_sales_by_year_and_month
+from src.Bronze import load_bronze_tables
+from src.Silver import transform_silver_data
+from src.Gold import transform_gold_data
 
-RAW_FILE = "data/raw/Supermart Grocery Sales - Retail Analytics Dataset.csv"
-BRONZE_FILE = "data/Bronze/bronze_data.parquet"
-SILVER_FILE = "data/Silver/silver_data.parquet"
-GOLD_DIR = "data/Gold"
-GOLD_BY_REGION = f"{GOLD_DIR}/sales_by_region.parquet"
-GOLD_BY_CATEGORY = f"{GOLD_DIR}/sales_by_category.parquet"
-GOLD_BY_YEAR_MONTH = f"{GOLD_DIR}/sales_by_year_and_month.parquet"
+PROJECT_DIR = Path(__file__).resolve().parent
 
-# Bronze
-bronze_data = load_bronze_data(RAW_FILE)
-os.makedirs("data/Bronze", exist_ok=True)
-bronze_data.to_parquet(BRONZE_FILE, index=False)
 
-print("BRONZE")
-print(f"Rows: {len(bronze_data)}")
-print(bronze_data.head())
-print()
+def write_parquet_file(data, path):
+    """Save a table as one Parquet file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-# Silver
-silver_data = transform_silver_data(bronze_data)
-os.makedirs("data/Silver", exist_ok=True)
-silver_data.to_parquet(SILVER_FILE, index=False)
+    # Spark writes a folder. Move its data file to the requested filename.
+    with TemporaryDirectory(prefix=".parquet-", dir=path.parent) as directory:
+        staging = Path(directory) / "output"
+        data.coalesce(1).write.mode("overwrite").parquet(str(staging))
+        parts = list(staging.glob("part-*.parquet"))
+        if len(parts) != 1:
+            raise RuntimeError(f"Expected one Parquet part file, got {len(parts)}")
+        parts[0].replace(path)
 
-print("SILVER")
-print(f"Rows: {len(silver_data)}")
-print(silver_data.head())
-print()
 
-print(f"Rows removed: {len(bronze_data) - len(silver_data)}")
-print(silver_data.dtypes)
+def run_pipeline(spark, input_dir, output_dir):
+    """Load raw data and save Bronze, Silver and Gold tables."""
+    output = Path(output_dir)
 
-# Gold
-os.makedirs(GOLD_DIR, exist_ok=True)
+    # Bronze: save the raw tables.
+    bronze = load_bronze_tables(input_dir, spark)
+    for name, data in bronze.items():
+        path = output / "Bronze" / f"{name}.parquet"
+        write_parquet_file(data, path)
+        bronze[name] = spark.read.parquet(str(path))
+        print(f"BRONZE - {name}")
 
-gold_by_region = create_sales_by_region(silver_data)
-gold_by_category = create_sales_by_category(silver_data)
-gold_by_year_month = create_sales_by_year_and_month(silver_data)
+    # Silver: clean the saved Bronze tables.
+    silver = transform_silver_data(bronze)
+    for name, data in silver.items():
+        path = output / "Silver" / f"{name}.parquet"
+        write_parquet_file(data, path)
+        silver[name] = spark.read.parquet(str(path))
+        print(f"SILVER - {name}")
 
-gold_by_region.to_parquet(GOLD_BY_REGION, index=False)
-gold_by_category.to_parquet(GOLD_BY_CATEGORY, index=False)
-gold_by_year_month.to_parquet(GOLD_BY_YEAR_MONTH, index=False)
+    # Gold: build business summaries from the saved Silver tables.
+    gold = transform_gold_data(silver)
+    for name, data in gold.items():
+        write_parquet_file(data, output / "Gold" / f"{name}.parquet")
+        print(f"GOLD - {name}")
 
-print()
-print("GOLD - Sales by Region")
-print(gold_by_region)
-print()
-print("GOLD - Sales by Category")
-print(gold_by_category)
-print()
-print("GOLD - Sales by Year and Month")
-print(gold_by_year_month)
 
+def main():
+    parser = argparse.ArgumentParser(description="Olist PySpark Bronze, Silver and Gold pipeline")
+    parser.add_argument("--input-dir", default=str(PROJECT_DIR / "data/raw"))
+    parser.add_argument("--output-dir", default=str(PROJECT_DIR / "data"))
+    parser.add_argument("--master", default="local[2]")
+    args = parser.parse_args()
+
+    spark = (
+        SparkSession.builder
+        .appName("OlistLakehouse")
+        .master(args.master)
+        .config("spark.sql.session.timeZone", "UTC")
+        .getOrCreate()
+    )
+
+    try:
+        run_pipeline(spark, args.input_dir, args.output_dir)
+    finally:
+        spark.stop()
+
+
+if __name__ == "__main__":
+    main()
