@@ -37,7 +37,6 @@ A day number is a work sequence, not proof every preceding requirement is done.
 | Preserve Bronze fields as strings | Implemented |
 | Persist Bronze and read it before Silver | Implemented |
 | Clean all nine tables with PySpark | Implemented |
-| Single Parquet file per table in each layer | Implemented |
 | Tiny-fixture end-to-end integration test | Implemented; last run passed |
 | Full source Bronze/Silver run | Succeeded; counts recorded below |
 | Required-column contracts, key and reference checks | Pending |
@@ -47,13 +46,12 @@ A day number is a work sequence, not proof every preceding requirement is done.
 | Ingestion ledger, source hashes and incremental updates | Pending |
 | Airflow, PostgreSQL publication and dashboard | Pending |
 | Docker Compose and GitHub Actions | Pending |
-| Delta Lake | Not used; separate future storage decision |
+| Delta Lake | Storage for Bronze, Silver and Gold with table history |
 
 `src/Gold.py` now includes `create_sales_monthly(orders, order_items)`, which returns
 delivered-order monthly item revenue and freight after aggregating items by order.
 It uses an inner join, excluding orders without items; orders must have unique IDs.
-It returns a DataFrame and does not save or display it. Use `write_parquet_file`
-from `main.py` when saving to preserve the single-file layout.
+It returns a DataFrame. The pipeline persists Gold outputs as Delta tables.
 
 The module also builds `fact_orders`, `fact_order_items`, `sales_by_category`,
 `seller_performance`, and `delivery_review_monthly`. `transform_gold_data(tables)`
@@ -76,10 +74,10 @@ full-source key and total validation remains pending.
 
 ```mermaid
 flowchart LR
-    R[Nine raw CSV files] --> B[Bronze: nine Parquet files]
+    R[Nine raw CSV files] --> B[Bronze: nine tables]
     B --> S[PySpark cleaning and type conversion]
-    S --> P[Silver: nine Parquet files]
-    P --> G[Gold: six analytical Parquet files]
+    S --> P[Silver: nine tables]
+    P --> G[Gold: six analytical tables]
 ```
 
 ### Planned completion flow
@@ -99,43 +97,29 @@ flowchart LR
     A -.-> V
 ```
 
-Python and PySpark implement transformations. Local Parquet is the current
-storage format. PostgreSQL will serve analytical results; Airflow will run tested
-commands in order. Docker Compose and CI will make execution reproducible.
-These latter components are planned, not installed capabilities of this project.
+Python and PySpark implement transformations and store each layer in Delta Lake.
+PostgreSQL serving, Airflow orchestration, Docker Compose, and CI are planned.
 
-### Storage decision: single files
+### Delta Lake storage
 
-Each table is a real file, for example `data/Bronze/customers.parquet` and
-`data/Silver/customers.parquet`. This follows the chosen simple local layout.
-Spark first writes into a temporary directory using `coalesce(1)`; the writer
-moves its single part file to the requested filename and removes temporary files.
-One output partition is suitable for this exercise but limits write parallelism.
-
-Every run replaces the named output files. It does not append records. Successful
-full reruns therefore replace snapshots rather than accumulate duplicates, but
-this is not incremental ingestion, an ingestion ledger or an upsert demonstration.
-Writes across multiple tables are not one transaction: a failed run can leave a
-mixture of old and new outputs. Unrelated output files are not automatically removed.
-
-Delta Lake needs table directories containing data files and a transaction log.
-A `.parquet` filename is not Delta. If Delta MERGE and version history become
-required, introduce a separate directory layout and compatible runtime deliberately.
-The original Delta acceptance criteria remain deferred while using single files.
+Each table is a directory under `data/delta/` containing Parquet data files and
+a `_delta_log` transaction log. Each overwrite commits a new version of that
+table. A failed run can leave some tables on earlier versions because commits
+are per table. The pipeline rebuilds full snapshots, and incremental `MERGE`
+remains future work. See the [Delta setup and time-travel example](../README.md#delta-lake).
 
 ## 4. Repository map
 
 | Path | Responsibility |
 |---|---|
-| `main.py` | CLI, Spark lifecycle, single-file writer, Bronze/Silver/Gold execution |
+| `main.py` | CLI, Spark lifecycle, Delta writer, Bronze/Silver/Gold execution |
 | `src/Bronze.py` | Nine source filenames, missing-file check, CSV loading |
 | `src/Silver.py` | Common cleaning and one transform per table |
 | `src/Gold.py` | Six Olist Gold builders and a dictionary orchestrator |
 | `tests/test_pipeline.py` | Small end-to-end fixture and cleaning assertions |
 | `data/raw/` | Original nine CSVs; preserve these inputs |
-| `data/Bronze/` | Raw-value Parquet snapshots |
-| `data/Silver/` | Cleaned, typed Parquet snapshots |
-| `data/Gold/` | Six Olist analytical Parquet outputs |
+| `data/delta/` | Delta tables for all three layers |
+| `requirements.txt` | Compatible PySpark and Delta Lake versions |
 | `sql/create_tables.sql` | Placeholder for future serving table definitions |
 | `sql/queries.sql` | Placeholder for future analytical queries |
 | `notebooks/exploration.ipynb` | Separate exploration; not part of pipeline execution |
@@ -257,21 +241,23 @@ SPARK_LOCAL_IP=127.0.0.1 .venv/bin/python -B -m unittest discover -s tests
 `SPARK_LOCAL_IP` was used to work around this machine's hostname-resolution issue.
 Spark also needs permission to open local sockets. Java 17+ is the documented
 starting requirement; choose Python/Java versions compatible with the selected
-Spark release. Dependencies currently specify `pyspark>=3.5,<5`, rather than a
-pinned reproducible stack. Pin and verify an exact runtime during packaging.
+Spark release. The pinned versions are in `requirements.txt`.
 
 Read a result using Spark:
 
 ```python
-orders = spark.read.parquet('data/Silver/orders.parquet')
+from main import build_spark
+
+spark = build_spark('local[2]')
+orders = spark.read.format('delta').load('data/delta/Silver/orders')
 orders.select('order_id', 'purchase_date', 'delivery_days').show(5)
 ```
 
-The existing unittest creates small samples using the raw source headers. It
-checks real-file outputs, basic cleaning, ZIP zeros, decimal item totals,
+The integration test creates small samples using the raw source headers. It
+checks output paths, basic cleaning, ZIP zeros, decimal item totals,
 missing delivery dates, unknown categories, invalid measurements, multiline
-reviews and geolocation duplicates. It does not prove full-source key integrity,
-Gold correctness, recovery, database publication or CI reproducibility.
+reviews, geolocation duplicates, Delta transaction logs, and time travel after
+an overwrite.
 
 ## 9. Next milestone: finish Silver validation
 
@@ -347,8 +333,8 @@ reconcile to the same eligible Silver population; metric filters are documented.
 Introduce tests and minimal Docker configuration alongside development. CI and
 packaging completion do not mean waiting until the final stage to start them.
 During recovery work, distinguish snapshot replacement from incremental updates.
-If true MERGE/upserts and table history are required, make the Delta storage
-migration a specific additional milestone before claiming those guarantees.
+An incremental Silver job can build on the Delta tables by defining upsert keys
+and testing `MERGE` with new and corrected records.
 
 JSON/API adapters, a seeded operational database and simulated updates are later
 extensions, not prerequisites for the first CSV-to-dashboard version. Label any

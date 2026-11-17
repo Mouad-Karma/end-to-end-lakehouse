@@ -4,9 +4,7 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 
-from pyspark.sql import SparkSession
-
-from main import run_pipeline, PROJECT_DIR
+from main import build_spark, run_pipeline, write_table, PROJECT_DIR
 from src.Bronze import SOURCE_FILES
 from src.Gold import create_sales_monthly, transform_gold_data
 
@@ -14,8 +12,9 @@ from src.Gold import create_sales_monthly, transform_gold_data
 class PipelineTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.spark = (SparkSession.builder.master("local[2]").appName("olist-test")
-                     .config("spark.sql.shuffle.partitions", "2").getOrCreate())
+        cls.spark = build_spark("local[2]", app_name="olist-test")
+        cls.spark.conf.set("spark.sql.shuffle.partitions", "2")
+        cls.spark.conf.set("spark.databricks.delta.snapshotPartitions", "2")
         cls.spark.sparkContext.setLogLevel("ERROR")
 
     @classmethod
@@ -118,20 +117,26 @@ class PipelineTest(unittest.TestCase):
                             row = dict(row, geolocation_state="RJ")
                             writer.writerow(row)
             output = root / "output"
-            run_pipeline(self.spark, str(raw), str(output))
-            read = lambda layer, name: self.spark.read.parquet(str(output / layer / f"{name}.parquet"))
+            run_pipeline(self.spark, raw, output)
+
+            def read(layer, name):
+                return self.spark.read.format("delta").load(str(output / layer / name))
+
+            def assert_table(layer, name):
+                self.assertTrue((output / layer / name / "_delta_log").is_dir())
+
             self.assertEqual(len(list((output / "Bronze").iterdir())), 9)
             self.assertEqual(len(list((output / "Silver").iterdir())), 9)
             for layer in ("Bronze", "Silver"):
                 for name in SOURCE_FILES:
-                    self.assertTrue((output / layer / f"{name}.parquet").is_file())
+                    assert_table(layer, name)
             gold_names = {
                 "fact_orders", "fact_order_items", "sales_monthly",
                 "sales_by_category", "seller_performance", "delivery_review_monthly",
             }
             self.assertEqual({path.stem for path in (output / "Gold").iterdir()}, gold_names)
             for name in gold_names:
-                self.assertTrue((output / "Gold" / f"{name}.parquet").is_file())
+                assert_table("Gold", name)
                 read("Gold", name).collect()
             self.assertEqual(read("Gold", "fact_orders").count(), 1)
             self.assertEqual(read("Gold", "fact_order_items").count(), 1)
@@ -151,6 +156,15 @@ class PipelineTest(unittest.TestCase):
             self.assertEqual(review.review_comment_message, 'A multiline\nreview, with "quotes"')
             item = read("Silver", "order_items").first()
             self.assertEqual(item.item_total, Decimal("72.19"))
+
+    def test_delta_overwrite_retains_previous_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / "orders")
+            write_table(self.spark.range(1), path)
+            write_table(self.spark.range(2), path)
+            self.assertEqual(self.spark.read.format("delta").load(path).count(), 2)
+            previous = self.spark.read.format("delta").option("versionAsOf", 0).load(path)
+            self.assertEqual(previous.count(), 1)
 
 
 if __name__ == "__main__":

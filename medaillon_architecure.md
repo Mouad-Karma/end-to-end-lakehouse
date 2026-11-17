@@ -2,13 +2,13 @@
 
 ## Bronze: keep the source data
 
-Read the nine CSV files from `data/raw` and save nine Parquet datasets under
-`data/Bronze`. Columns stay strings so identifiers and ZIP codes keep their
+Read the nine CSV files from `data/raw` and save nine tables under
+`data/delta/Bronze`. Columns stay strings so identifiers and ZIP codes keep their
 original values. Multiline review comments are supported.
 
 ## Silver: simple cleaning with PySpark
 
-Read the Bronze datasets and save nine cleaned tables under `data/Silver`.
+Read the Bronze datasets and save nine cleaned tables under `data/delta/Silver`.
 `src/Silver.py` has one function for each dataset. Each function first calls
 `clean_common_columns`, which cleans headers, trims text, turns blank values
 into nulls and removes exact duplicate rows. Nonblank review prose is preserved.
@@ -45,7 +45,7 @@ exact duplicates only, and does not arbitrarily deduplicate business IDs.
 The pipeline reads saved Silver tables. `src/Gold.py` provides order and item facts,
 monthly sales, category sales, seller performance and monthly delivery/review
 summaries. `transform_gold_data(tables)` returns all six DataFrames; `main.py`
-saves them as single Parquet files under `Gold/`. Sales include delivered orders only.
+saves them under `data/delta/Gold/`. Sales include delivered orders only.
 
 Keep these relationships in mind:
 
@@ -62,9 +62,8 @@ Keep these relationships in mind:
 ## Running the pipeline
 
 ```bash
-python main.py --master 'local[2]'
+python main.py
 ```
 
-Outputs are single local Parquet files (`Bronze/customers.parquet`, for example).
-Each run overwrites nine Bronze, nine Silver and six Gold files. Unrelated old outputs, including an earlier geolocation_lookup, are
-not deleted and are not part of the current pipeline.
+Each run overwrites nine Bronze, nine Silver, and six Gold [Delta tables](README.md#delta-lake).
+Each table's transaction log records committed versions and supports time travel.
