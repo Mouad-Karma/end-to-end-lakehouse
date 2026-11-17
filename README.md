@@ -16,8 +16,8 @@ Use `--input-dir`, `--output-dir`, or `--master` to change the run settings.
 
 ## Delta Lake
 
-The pipeline writes Delta table directories under `data/delta/`, for example
-`data/delta/Silver/orders/`.
+The pipeline writes tables directly under `data/Bronze/`, `data/Silver/`, and
+`data/Gold/`. Each table has its own directory, for example `data/Silver/orders/`.
 
 - **Transaction log and ACID writes**. The `_delta_log/` records which Parquet
   files belong to each version. Each table overwrite commits atomically, and a
@@ -32,7 +32,7 @@ The pipeline writes Delta table directories under `data/delta/`, for example
   from main import build_spark
 
   spark = build_spark("local[2]")
-  path = "data/delta/Silver/orders"
+  path = "data/Silver/orders"
   DeltaTable.forPath(spark, path).history().select("version", "operation").show()
   current = spark.read.format("delta").load(path)
   original = spark.read.format("delta").option("versionAsOf", 0).load(path)

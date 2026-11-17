@@ -102,7 +102,7 @@ PostgreSQL serving, Airflow orchestration, Docker Compose, and CI are planned.
 
 ### Delta Lake storage
 
-Each table is a directory under `data/delta/` containing Parquet data files and
+Each table is a directory under `data/` containing Parquet data files and
 a `_delta_log` transaction log. Each overwrite commits a new version of that
 table. A failed run can leave some tables on earlier versions because commits
 are per table. The pipeline rebuilds full snapshots, and incremental `MERGE`
@@ -118,7 +118,7 @@ remains future work. See the [Delta setup and time-travel example](../README.md#
 | `src/Gold.py` | Six Olist Gold builders and a dictionary orchestrator |
 | `tests/test_pipeline.py` | Small end-to-end fixture and cleaning assertions |
 | `data/raw/` | Original nine CSVs; preserve these inputs |
-| `data/delta/` | Delta tables for all three layers |
+| `data/Bronze/`, `data/Silver/`, `data/Gold/` | Delta table directories |
 | `requirements.txt` | Compatible PySpark and Delta Lake versions |
 | `sql/create_tables.sql` | Placeholder for future serving table definitions |
 | `sql/queries.sql` | Placeholder for future analytical queries |
@@ -249,7 +249,7 @@ Read a result using Spark:
 from main import build_spark
 
 spark = build_spark('local[2]')
-orders = spark.read.format('delta').load('data/delta/Silver/orders')
+orders = spark.read.format('delta').load('data/Silver/orders')
 orders.select('order_id', 'purchase_date', 'delivery_days').show(5)
 ```
 

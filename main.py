@@ -55,7 +55,7 @@ def run_pipeline(spark, input_dir, output_dir):
 def main():
     parser = argparse.ArgumentParser(description="Olist PySpark Bronze, Silver and Gold pipeline")
     parser.add_argument("--input-dir", default=str(PROJECT_DIR / "data/raw"))
-    parser.add_argument("--output-dir", default=str(PROJECT_DIR / "data/delta"))
+    parser.add_argument("--output-dir", default=str(PROJECT_DIR / "data"))
     parser.add_argument("--master", default="local[2]")
     args = parser.parse_args()
 
