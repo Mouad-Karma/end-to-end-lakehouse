@@ -2,3 +2,8 @@ __pycache__/
 /data/Bronze/
 /data/Silver/
 /data/Gold/
+
+/data/.olist-batches/
+/data/.olist.lock
+/data/incoming/
+/airflow/.env

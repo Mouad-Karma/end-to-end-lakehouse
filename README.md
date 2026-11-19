@@ -14,6 +14,9 @@ python main.py
 
 Use `--input-dir`, `--output-dir`, or `--master` to change the run settings.
 
+For Docker Compose setup and the Airflow DAGs, see
+[Run the Olist pipeline in Airflow](airflow/README.md).
+
 ## Delta Lake
 
 The pipeline writes tables directly under `data/Bronze/`, `data/Silver/`, and
@@ -44,9 +47,9 @@ The pipeline writes tables directly under `data/Bronze/`, `data/Silver/`, and
 - **Schema enforcement**. Delta checks incoming writes against the table
   schema. When changing a source schema, update the transformations and decide
   whether to explicitly evolve the destination schema.
-- **Incremental upserts**. A future Silver orders job can use `MERGE` on
-  `order_id` to update matching orders and insert new ones. The current pipeline
-  uses full-table overwrites, so each run rebuilds the tables from the CSVs.
+- **Incremental upserts**. The Airflow orders DAG uses `MERGE` on `order_id`
+  in Bronze and Silver, then recalculates Gold. Running `main.py` performs
+  a full rebuild from the nine source CSVs.
 
 See the [Delta Lake Spark quickstart](https://docs.delta.io/quick-start/)
 for more examples.
@@ -60,3 +63,21 @@ Validation:
 ```bash
 python -B -m unittest discover -s tests
 ```
+
+## Dashboard Gold
+
+Depuis la racine du projet, installe les dépendances du dashboard et lance Streamlit.
+
+```bash
+.venv/bin/python -m pip install -r dashboard/requirements.txt
+.venv/bin/python -m streamlit run dashboard/app.py --server.address 127.0.0.1
+```
+
+Ouvre [localhost:8501](http://localhost:8501). Choisis une année pour filtrer
+les indicateurs et les graphiques. Clique sur **Actualiser** après une mise à
+jour de Gold. Arrête Streamlit avec `Ctrl+C`.
+
+DuckDB interroge les tables Delta `sales_monthly` et `fact_order_items` avec
+`delta_scan`. Le premier accès peut télécharger l’extension Delta. Le tableau
+de bord compte les commandes livrées avec des articles et affiche le prix des
+articles séparément des frais de livraison.

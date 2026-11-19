@@ -1,0 +1,39 @@
+services:
+  airflow:
+    build:
+      context: ..
+      dockerfile: airflow/Dockerfile
+    command:
+      - bash
+      - -ec
+      - |
+        printf '%s\n' '{"airflow":"airflow"}' > /opt/airflow/simple_auth_manager_passwords.json.generated
+        exec airflow standalone
+    user: "${AIRFLOW_UID:-50000}:0"
+    ports:
+      - "127.0.0.1:${AIRFLOW_PORT:-8080}:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__PARALLELISM: "1"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin"
+      OLIST_DATA_DIR: /opt/olist-data
+      SPARK_LOCAL_IP: 127.0.0.1
+      PYTHONPATH: /opt/olist
+      PYSPARK_SUBMIT_ARGS: >-
+        --conf spark.jars.ivy=/opt/airflow/.ivy
+        --conf spark.jars.ivySettings=/opt/olist/ivysettings.xml
+        --conf spark.sql.shuffle.partitions=4
+        --conf spark.databricks.delta.snapshotPartitions=4
+        --conf spark.ui.showConsoleProgress=false
+        pyspark-shell
+    volumes:
+      - airflow-home:/opt/airflow
+      - ./dags:/opt/airflow/dags:ro
+      - ../main.py:/opt/olist/main.py:ro
+      - ./orders_batch.py:/opt/olist/orders_batch.py:ro
+      - ./ivysettings.xml:/opt/olist/ivysettings.xml:ro
+      - ../src:/opt/olist/src:ro
+      - "${OLIST_DATA_DIR:-../data}:/opt/olist-data"
+
+volumes:
+  airflow-home:
